@@ -65,7 +65,7 @@ Não incluídos (opcionais de P2, fora do caminho mínimo): LiteLLM, Postgres, O
 
 ## Demo-service e InfluxDB
 
-O demo-service escreve em `INFLUX_URL` sem token, e o InfluxDB 2.x exige autenticação. Duas saídas, nenhuma testada, decisão do dono: dar suporte a token ao demo-service, ou usar a API de compatibilidade v1 com o token como senha (`http://influxdb.lab:8086/write?db=replay&u=admin&p=<token>`; pode exigir um mapeamento DBRP).
+O demo-service envia métricas com `INFLUX_URL=http://influxdb.lab.svc:8086/api/v2/write?org=lab&bucket=replay&precision=ms` e `INFLUX_TOKEN` igual à chave `influx-token` do Secret `lab-credentials` (de fora do cluster, use um port-forward e `127.0.0.1`). O envio com token está coberto por teste no demo-service; a escrita contra o InfluxDB real nunca foi executada.
 
 ## O que não foi testado
 
