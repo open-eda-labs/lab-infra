@@ -8,9 +8,10 @@ Escrito e validado só estaticamente (yamllint, shellcheck, kubeconform). **Nunc
 
 ## Pré-requisitos
 
-- Windows 11 com WSL2 e uma distribuição Ubuntu com systemd; `.wslconfig` como em [wslconfig.md](wslconfig.md) (memória da VM, `systemd=true`).
+- Windows 11 com WSL2 e uma distribuição Ubuntu com systemd ligado em `/etc/wsl.conf`, como em [wslconfig.md](wslconfig.md).
 - No WSL2: `make`, `curl`, `openssl` e `sudo`.
 - Ollama no Windows com `OLLAMA_HOST=0.0.0.0`, `OLLAMA_CONTEXT_LENGTH` definido (8192 a 16384; o padrão de 4k trunca o prompt, R-16) e o firewall do Windows liberando a porta 11434 para a rede do WSL2.
+- Modelo padrão do laboratório: `ollama pull qwen3:4b` (ADR-0004). Outro modelo: variável `MODEL` no `check-model.sh`.
 - Driver NVIDIA do Windows (traz o `nvidia-smi` ao WSL2).
 
 ## Subir e derrubar
@@ -72,7 +73,7 @@ Tudo o que roda. Não havia cluster, Windows nem GPU. Validado só de forma est�
 
 - `make up` e `make down`, a instalação do k3s e as flags escolhidas;
 - o patch de 2 réplicas do Argo Server contra o `install.yaml` real (o nome `argo-server` do Deployment vem da documentação; o `make up` falha de propósito se o patch não pegar);
-- a subida das três imagens com `readOnlyRootFilesystem`, UIDs fixos e volumes em `emptyDir`: se um pod entrar em crashloop, comece por aí;
+- a subida das três imagens com UID fixo e sem privilégios (o namespace `lab` exige Pod Security `restricted`): se um pod entrar em crashloop, comece por aí;
 - `MLFLOW_SERVER_ALLOWED_HOSTS` (nome da variável lido no código do MLflow 3.18.0; o efeito não foi observado);
 - o datasource do Grafana lendo `$INFLUX_TOKEN` do ambiente;
 - `check-model.sh`, a descoberta do Windows pelo gateway do WSL2 e a regra de firewall;

@@ -5,7 +5,7 @@
 set -euo pipefail
 export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/lab-infra.yaml}
 MODEL_URL=${MODEL_URL:-http://$(ip route show default | awk '{print $3; exit}'):11434}
-MODEL=${MODEL:-qwen3:8b}
+MODEL=${MODEL:-qwen3:4b}
 
 body=$(printf '{"model":"%s","messages":[{"role":"user","content":"Responda apenas: ok"}],"max_tokens":16,"stream":false}' "$MODEL")
 echo "Chamando $MODEL_URL/v1/chat/completions (modelo $MODEL) de dentro de um pod..."

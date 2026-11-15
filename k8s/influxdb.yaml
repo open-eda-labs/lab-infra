@@ -66,19 +66,14 @@ spec:
             limits: {memory: 1Gi}
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           volumeMounts:
             - {name: data, mountPath: /var/lib/influxdb2}
-            - {name: etc, mountPath: /etc/influxdb2}
-            - {name: tmp, mountPath: /tmp}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: influxdb
-        - {name: etc, emptyDir: {}}
-        - {name: tmp, emptyDir: {}}
 ---
 apiVersion: v1
 kind: Service
