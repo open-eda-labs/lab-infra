@@ -12,3 +12,15 @@ jobs:
   lint:
     # Convenção da org: o lint mora no repositório .github.
     uses: open-eda-labs/.github/.github/workflows/lint.yml@main
+
+  schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Pendência: pinar por SHA de commit (D-40).
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      # kubeconform pinada (checksum pelo sumdb do Go); valida só os manifests locais, não o install.yaml do Argo.
+      - run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+      - run: $(go env GOPATH)/bin/kubeconform -strict -summary -kubernetes-version 1.37.2 k8s/namespaces.yaml k8s/influxdb.yaml k8s/grafana.yaml k8s/mlflow.yaml

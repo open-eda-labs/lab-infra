@@ -1,0 +1,24 @@
+# Versões pinadas do que roda no cluster (D-40). A do k3s fica no Makefile.
+# Argo Workflows: manifesto oficial da release pinada + um patch (2 réplicas do Argo Server).
+# Imagens: tag + digest do índice multi-arquitetura, conferidos nos registries em 2026-11-15.
+resources:
+  - https://github.com/argoproj/argo-workflows/releases/download/v4.1.6/install.yaml
+  - namespaces.yaml
+  - influxdb.yaml
+  - grafana.yaml
+  - mlflow.yaml
+
+replicas:
+  - name: argo-server
+    count: 2
+
+images:
+  - name: influxdb
+    newTag: 2.9.1
+    digest: sha256:e4572d094ac3272f06528ea904ce6b4cb3bb19be2db3b3b1acbd27ba5c3a73e2
+  - name: grafana/grafana-oss
+    newTag: 13.0.2
+    digest: sha256:5dad0df181cb644a14e13617b913b261a54f7d4fd4510721dba420929f35bea2
+  - name: ghcr.io/mlflow/mlflow
+    newTag: v3.18.0
+    digest: sha256:257204c77980b0f3450a26eb6089e487603fcdd4509529eadaf88f90669f5c13
