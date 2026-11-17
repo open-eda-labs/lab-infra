@@ -1,7 +1,10 @@
 # Ponto de entrada único: make up | make down. Roda no WSL2 (Ubuntu com systemd), usuário comum com sudo.
 # Versão do k3s: canal stable em https://update.k3s.io/v1-release/channels (conferida em 2026-11-15).
-# As demais versões ficam em k8s/kustomization.yaml.
+# A do Argo fica em ARGO_INSTALL_URL; as das imagens, em k8s/kustomization.yaml.
 K3S_VERSION := v1.37.2+k3s1
+# Baixados a cada subida e conferidos contra checksums.txt antes de qualquer execução (D-40).
+K3S_INSTALL_URL := https://raw.githubusercontent.com/k3s-io/k3s/$(subst +,%2B,$(K3S_VERSION))/install.sh
+ARGO_INSTALL_URL := https://github.com/argoproj/argo-workflows/releases/download/v4.1.6/install.yaml
 # Sem Traefik nem servicelb: nada é exposto fora do cluster; o acesso é por port-forward.
 K3S_FLAGS := server --disable traefik --disable servicelb --write-kubeconfig-mode 600
 
@@ -10,8 +13,11 @@ export KUBECONFIG := $(HOME)/.kube/lab-infra.yaml
 .PHONY: up down
 
 up:
+	curl -sfL -o .k3s-install.sh "$(K3S_INSTALL_URL)"
+	curl -sfL -o k8s/argo-install.yaml "$(ARGO_INSTALL_URL)"
+	sha256sum -c checksums.txt
 	k3s --version 2>/dev/null | grep -qF "$(K3S_VERSION)" || \
-	  curl -sfL https://get.k3s.io | sudo env INSTALL_K3S_VERSION="$(K3S_VERSION)" INSTALL_K3S_EXEC="$(K3S_FLAGS)" sh -
+	  sudo env INSTALL_K3S_VERSION="$(K3S_VERSION)" INSTALL_K3S_EXEC="$(K3S_FLAGS)" sh .k3s-install.sh
 	mkdir -p $(dir $(KUBECONFIG))
 	sudo install -o $$(id -u) -g $$(id -g) -m 600 /etc/rancher/k3s/k3s.yaml $(KUBECONFIG)
 	kubectl wait --for=condition=Ready node --all --timeout=180s

@@ -1,12 +1,13 @@
-# Versões pinadas do que roda no cluster (D-40). A do k3s fica no Makefile.
-# Argo Workflows: manifesto oficial da release pinada + um patch (2 réplicas do Argo Server).
+# Versões das imagens (D-40). As do k3s e do Argo ficam no Makefile.
+# argo-install.yaml: manifesto oficial da release, baixado e conferido por sha256 pelo `make up`; aqui só o patch de 2 réplicas.
 # Imagens: tag + digest do índice multi-arquitetura, conferidos nos registries em 2026-11-15.
 resources:
-  - https://github.com/argoproj/argo-workflows/releases/download/v4.1.6/install.yaml
+  - argo-install.yaml
   - namespaces.yaml
   - influxdb.yaml
   - grafana.yaml
   - mlflow.yaml
+  - networkpolicy.yaml
 
 replicas:
   - name: argo-server

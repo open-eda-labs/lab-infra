@@ -33,7 +33,7 @@ kubectl -n lab get secret lab-credentials -o jsonpath='{.data.grafana-password}'
 
 ## Versões pinadas
 
-Pinadas em `Makefile` (k3s) e `k8s/kustomization.yaml` (Argo e imagens). Consulta feita em 2026-11-15; a página de releases do GitHub estava bloqueada nesta sessão (HTTP 403), então onde a fonte é um registry, a versão é "a mais nova tag estável no registry", não "a release anunciada".
+Pinadas em `Makefile` (k3s e Argo, baixados e conferidos por `sha256` contra `checksums.txt` antes de rodar) e `k8s/kustomization.yaml` (imagens). Consulta feita em 2026-11-15; a página de releases do GitHub estava bloqueada nesta sessão (HTTP 403), então onde a fonte é um registry, a versão é "a mais nova tag estável no registry", não "a release anunciada".
 
 | Peça | Versão | Origem | Situação |
 | --- | --- | --- | --- |
@@ -55,7 +55,7 @@ Compatibilidade do Argo v4.1.6 e das imagens com o Kubernetes 1.37 do k3s: não 
 | Argo Workflows | Executa os workflows dos próximos passos; Argo Server com 2 réplicas e ClusterIP (R-08: nunca expor) |
 | InfluxDB OSS 2.x | Séries do replay (D-34); bucket `replay` na org `lab` |
 | Grafana OSS | Painéis do laboratório, com o datasource do InfluxDB (Flux) provisionado |
-| MLflow | Rastreio e avaliação (D-32); SQLite e artefatos em volume; não é trilha de auditoria |
+| MLflow | Rastreio e avaliação (D-32); SQLite e artefatos em volume; sem autenticação, por isso só ClusterIP e port-forward, nunca exposto fora do cluster; dado D3 nunca vai para lá (D-42); não é trilha de auditoria |
 | `check-model.sh` | De um pod efêmero, chama `/v1/chat/completions` do modelo (R-26, Q-10) |
 | `footprint.sh` | Mede RAM e VRAM e grava `footprint.md` com a data |
 
@@ -67,12 +67,18 @@ Não incluídos (opcionais de P2, fora do caminho mínimo): LiteLLM, Postgres, O
 
 O demo-service envia métricas com `INFLUX_URL=http://influxdb.lab.svc:8086/api/v2/write?org=lab&bucket=replay&precision=ms` e `INFLUX_TOKEN` igual à chave `influx-token` do Secret `lab-credentials` (de fora do cluster, use um port-forward e `127.0.0.1`). O envio com token está coberto por teste no demo-service; a escrita contra o InfluxDB real nunca foi executada.
 
+## Rede dos Workflows
+
+`k8s/networkpolicy.yaml` vale para todo pod de Workflow do Argo: nenhuma entrada; saída só para DNS, HTTPS e a API do cluster. `NetworkPolicy` não filtra por nome de domínio, então restringir a saída a Maven Central e OSV exige um proxy de saída ou outro CNI; isso não está feito. O efeito da política nunca foi observado em cluster.
+
+Em VM aninhada (k3d, alguns WSL2), a VXLAN do flannel pode falhar com `operation not supported`; uma revisão externa precisou de `--flannel-backend=host-gw`. Se os pods não se alcançarem, acrescente essa opção a `K3S_FLAGS` no `Makefile`.
+
 ## O que não foi testado
 
-Tudo o que roda. Não havia cluster, Windows nem GPU. Validado só de forma estática: yamllint, shellcheck, `bash -n` e kubeconform nos manifests locais (o `install.yaml` do Argo não foi baixado, porque o GitHub estava bloqueado). Em particular, nunca rodaram:
+Tudo o que roda. Não havia cluster, Windows nem GPU. Validado só de forma estática: yamllint, shellcheck, `bash -n` e kubeconform nos manifests locais (o `install.yaml` do Argo foi baixado e renderizado pelo kustomize em 2026-11-17, mas nunca aplicado, porque o GitHub estava bloqueado). Em particular, nunca rodaram:
 
 - `make up` e `make down`, a instalação do k3s e as flags escolhidas;
-- o patch de 2 réplicas do Argo Server contra o `install.yaml` real (o nome `argo-server` do Deployment vem da documentação; o `make up` falha de propósito se o patch não pegar);
+- o Argo Server com 2 réplicas no cluster (o patch foi conferido por `kubectl kustomize` contra o `install.yaml` real da v4.1.6: o Deployment `argo-server` sai com `replicas: 2`; a subida das duas réplicas nunca foi observada);
 - a subida das três imagens com UID fixo e sem privilégios (o namespace `lab` exige Pod Security `restricted`): se um pod entrar em crashloop, comece por aí;
 - `MLFLOW_SERVER_ALLOWED_HOSTS` (nome da variável lido no código do MLflow 3.18.0; o efeito não foi observado);
 - o datasource do Grafana lendo `$INFLUX_TOKEN` do ambiente;

@@ -23,4 +23,4 @@ jobs:
           persist-credentials: false
       # kubeconform pinada (checksum pelo sumdb do Go); valida só os manifests locais, não o install.yaml do Argo.
       - run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
-      - run: $(go env GOPATH)/bin/kubeconform -strict -summary -kubernetes-version 1.37.2 k8s/namespaces.yaml k8s/influxdb.yaml k8s/grafana.yaml k8s/mlflow.yaml
+      - run: $(go env GOPATH)/bin/kubeconform -strict -summary -kubernetes-version 1.37.2 k8s/namespaces.yaml k8s/influxdb.yaml k8s/grafana.yaml k8s/mlflow.yaml k8s/networkpolicy.yaml
