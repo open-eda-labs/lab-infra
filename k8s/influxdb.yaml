@@ -1,0 +1,87 @@
+# InfluxDB OSS 2.x: séries do replay (D-34). Credenciais vêm do Secret lab-credentials (criado pelo Makefile).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: influxdb
+  namespace: lab
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+  namespace: lab
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: influxdb
+          image: influxdb
+          ports:
+            - containerPort: 8086
+          env:
+            - name: DOCKER_INFLUXDB_INIT_MODE
+              value: setup
+            - name: DOCKER_INFLUXDB_INIT_USERNAME
+              value: admin
+            - name: DOCKER_INFLUXDB_INIT_ORG
+              value: lab
+            - name: DOCKER_INFLUXDB_INIT_BUCKET
+              value: replay
+            - name: DOCKER_INFLUXDB_INIT_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: lab-credentials, key: influx-password}
+            - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef: {name: lab-credentials, key: influx-token}
+            - name: INFLUXD_REPORTING_DISABLED
+              value: "true"
+          readinessProbe:
+            httpGet: {path: /health, port: 8086}
+          livenessProbe:
+            httpGet: {path: /health, port: 8086}
+            initialDelaySeconds: 30
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/influxdb2}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: influxdb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: lab
+spec:
+  selector:
+    app: influxdb
+  ports:
+    - port: 8086

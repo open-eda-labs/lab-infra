@@ -1,0 +1,84 @@
+# MLflow para rastreio e avaliação (D-32). SQLite e artefatos no volume; sem autenticação: só ClusterIP + port-forward.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow
+  namespace: lab
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: lab
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mlflow
+          image: ghcr.io/mlflow/mlflow
+          command:
+            - mlflow
+            - server
+            - --host=0.0.0.0
+            - --port=5000
+            - --workers=1
+            - --backend-store-uri=sqlite:////mlflow/mlflow.db
+            - --artifacts-destination=/mlflow/artifacts
+          ports:
+            - containerPort: 5000
+          env:
+            - name: HOME
+              value: /tmp
+            # O MLflow 3.x recusa Host que não seja localhost ou IP privado (HTTP 403 para mlflow.lab.svc).
+            - name: MLFLOW_SERVER_ALLOWED_HOSTS
+              value: "mlflow,mlflow:*,mlflow.lab,mlflow.lab:*,mlflow.lab.svc,mlflow.lab.svc:*,mlflow.lab.svc.cluster.local,mlflow.lab.svc.cluster.local:*,localhost,localhost:*,127.0.0.1,127.0.0.1:*"
+          readinessProbe:
+            httpGet: {path: /health, port: 5000}
+          livenessProbe:
+            httpGet: {path: /health, port: 5000}
+            initialDelaySeconds: 30
+          resources:
+            requests: {cpu: 50m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: data, mountPath: /mlflow}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mlflow
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: lab
+spec:
+  selector:
+    app: mlflow
+  ports:
+    - port: 5000

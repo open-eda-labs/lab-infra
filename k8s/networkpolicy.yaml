@@ -1,0 +1,18 @@
+# Pods de Workflow do Argo (vuln fixer e triagem): nenhuma entrada; saída só para DNS, HTTPS e a API do cluster.
+# shortcut: NetworkPolicy não filtra por nome de domínio; restringir a Maven Central e OSV exige um proxy de saída ou outro CNI.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: workflow-pods
+  namespace: argo
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: workflows.argoproj.io/workflow, operator: Exists}
+  policyTypes: [Ingress, Egress]
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 6443}
